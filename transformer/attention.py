@@ -83,10 +83,33 @@ class FeedForwardNetwork(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, d_model: int, seq_length: int):
+    def __init__(self, d_model: int, seq_length: int, head: int, dropout: float):
         super().__init__()
 
-        Q = torch.tensor(seq_length, d_model)
-        K = torch.tensor(seq_length, d_model).t()
+        self.dk = d_model // head
 
-        V = torch.tensor(seq_length, seq_length)
+        # Learnable parameters
+        self.w_q = nn.Linear(d_model, d_model)
+        self.w_k = nn.Linear(d_model, d_model)
+        self.w_v = nn.Linear(d_model, d_model)
+        self.w_o = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    @staticmethod
+    def head(query, key, value, dropout: nn.Dropout):
+        d_k = query.shape[-1]
+
+        attention = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+
+    def forward(self, q, k, v, mask):
+        # x -> seq_length, d_model * d_model, d_model -> seq_length, d_model
+        query = self.w_q(q)
+        key = self.w_k(k)
+        value = self.w_v(v)
+
+        # batch_size, seq_length, d_model -> batch_size, seq_length,h, d_k -> batch_size, h, seq_length, d_k
+        query = query.view(query.shape[0], query.shape[1], self.head, self.dk).transpose(1, 2)
+        key = key.view(key.shape[0], key.shape[1], self.head, self.dk).transpose(1, 2)
+        query = query.view(value.shape[0], value.shape[1], self.head, self.dk).transpose(1, 2)
+
+
