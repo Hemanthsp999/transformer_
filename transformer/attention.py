@@ -82,7 +82,7 @@ class FeedForwardNetwork(nn.Module):
         return self.layer2(self.dropout(torch.relu(self.layer1(x))))
 
 
-class Attention(nn.Module):
+class MultiHeadAttention(nn.Module):
     def __init__(self, d_model: int, seq_length: int, head: int, dropout: float):
         super().__init__()
 
@@ -96,10 +96,20 @@ class Attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     @staticmethod
-    def head(query, key, value, dropout: nn.Dropout):
+    def single_head(query, key, value, dropout: nn.Dropout, mask):
         d_k = query.shape[-1]
 
-        attention = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+        # (batch, h, seq_len, d_k) @ (batch, h, d_k, seq_len) => (batch_size, h, seq_len, seq_len)
+        attention_score = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+        if mask is not None:
+            attention_score.masked_fill_(mask == 0, -1e9)
+
+        attention_score = attention_score.softmax(dim=-1)
+        attention_weights = (attention_score @ value)
+        if dropout is not None:
+            attention_score = dropout(attention_score)
+
+        return attention_weights, attention_score
 
     def forward(self, q, k, v, mask):
         # x -> seq_length, d_model * d_model, d_model -> seq_length, d_model
@@ -110,6 +120,9 @@ class Attention(nn.Module):
         # batch_size, seq_length, d_model -> batch_size, seq_length,h, d_k -> batch_size, h, seq_length, d_k
         query = query.view(query.shape[0], query.shape[1], self.head, self.dk).transpose(1, 2)
         key = key.view(key.shape[0], key.shape[1], self.head, self.dk).transpose(1, 2)
-        query = query.view(value.shape[0], value.shape[1], self.head, self.dk).transpose(1, 2)
+        value = value.view(value.shape[0], value.shape[1], self.head, self.dk).transpose(1, 2)
 
+        x, self.attentionScore = MultiHeadAttention.single_head(
+            query, key, value, self.dropout, mask)
 
+        return self.W_o(x)
