@@ -105,6 +105,8 @@ class MultiHeadAttention(nn.Module):
             attention_score.masked_fill_(mask == 0, -1e9)
 
         attention_score = attention_score.softmax(dim=-1)
+
+        # (batch_size, h, seq_len, seq_len) @ (batch_size, h, seq_len, d_k) => (batch_size, h, seq_len, d_k)
         attention_weights = (attention_score @ value)
         if dropout is not None:
             attention_score = dropout(attention_score)
@@ -122,7 +124,48 @@ class MultiHeadAttention(nn.Module):
         key = key.view(key.shape[0], key.shape[1], self.head, self.dk).transpose(1, 2)
         value = value.view(value.shape[0], value.shape[1], self.head, self.dk).transpose(1, 2)
 
+        # (batch_size, )
         x, self.attentionScore = MultiHeadAttention.single_head(
             query, key, value, self.dropout, mask)
 
+        # x (batch_size, h, seq_len, d_k) => (batch_size, seq_len, d_model)
+        # x = x.view(query.shape[0], query.shape[1], self.h * self.dk)
+        x = x.transpose(1, 2).contiguous().view(query.shape[0], -1, self.h * self.dk)
         return self.W_o(x)
+
+
+class ResNet(nn.Module):
+    def __init__(self, dropout: float):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.norm = LayerNorm()
+
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.norm(x)))
+
+
+class EncoderBlock(nn.Module):
+
+    def __init__(self, multiHead: MultiHeadAttention, feedForwardNetwork: FeedForwardNetwork, dropout: float):
+        super().__init__()
+        self.self_attention = multiHead
+        self.feed_forward_network = feedForwardNetwork
+        self.Residual = nn.ModuleList([ResNet(dropout) for _ in range(2)])
+
+    def forward(self, x, mask):
+        x = self.Residual[0](x, lambda x: self.self_attention(x, x, x, mask))
+        x = self.Residual[1](x, self.feed_forward_network)
+        return x
+
+
+class Encoder(nn.Module):
+    def __init__(self, layers: nn.MoudleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNorm()
+
+    def forward(self, x, mask):
+        for layer in self.layers:
+            x = layer(x, mask)
+
+        return self.norm(x)
