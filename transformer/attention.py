@@ -169,3 +169,34 @@ class Encoder(nn.Module):
             x = layer(x, mask)
 
         return self.norm(x)
+
+
+class DecoderBlock(nn.Module):
+
+    def __init__(self, multiHead: MultiHeadAttention, feedForward: FeedForwardNetwork, dropout: float):
+        super().__init__()
+        self.self_attention = multiHead
+        self.feedForward = feedForward
+        self.layerNorm = LayerNorm()
+        self.resNet = nn.ModuleList([ResNet(dropout) for _ in range(3)])
+
+    def forward(self, x, mask):
+        x = self.resNet[0](x, lambda x: self.self_attention(x, x, x, mask))
+        x = self.resNet[1](x, lambda x: self.self_attention(x, x, x, mask))
+        x = self.resNet[2](x, self.feedForward)
+
+        return x
+
+
+class Decoder(nn.Module):
+
+    def __init__(self, layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNorm()
+
+    def forward(self, x, mask):
+        for layer in self.layers:
+            x = layer(x, mask)
+
+        return self.norm(x)
