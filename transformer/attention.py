@@ -3,23 +3,6 @@ import math
 import torch.nn as nn
 
 
-vocab = {
-    "who": 1,
-    "are": 2,
-    "you": 3,
-    "what": 4,
-    "and": 5,
-    "how": 6,
-    "is": 7,
-    "that": 8,
-    "hi": 9,
-    "bye": 10,
-    "?": 11,
-    "your": 12,
-    "name": 13
-}
-
-
 class InputEmbedding(nn.Module):
     def __init__(self, vocab_size: int, d_model: int):
         super().__init__()
@@ -63,6 +46,7 @@ class LayerNorm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(1))  # Additive
 
     def forward(self, x):
+        # alpha * (x - mean / std + epsilon) + beta
         mean = x.mean(dim=-1, keepdim=True)
         std = x.std(dim=-1, keepdim=True)
 
@@ -173,16 +157,17 @@ class Encoder(nn.Module):
 
 class DecoderBlock(nn.Module):
 
-    def __init__(self, multiHead: MultiHeadAttention, feedForward: FeedForwardNetwork, dropout: float):
+    def __init__(self, multiHead: MultiHeadAttention, crossHeadAttention: MultiHeadAttention, feedForward: FeedForwardNetwork, dropout: float):
         super().__init__()
         self.self_attention = multiHead
+        self.crossHead = crossHeadAttention
         self.feedForward = feedForward
         self.layerNorm = LayerNorm()
         self.resNet = nn.ModuleList([ResNet(dropout) for _ in range(3)])
 
     def forward(self, x, mask):
         x = self.resNet[0](x, lambda x: self.self_attention(x, x, x, mask))
-        x = self.resNet[1](x, lambda x: self.self_attention(x, x, x, mask))
+        x = self.resNet[1](x, lambda x: self.crossHead(x, x, x, mask))
         x = self.resNet[2](x, self.feedForward)
 
         return x
