@@ -128,60 +128,48 @@ class ResNet(nn.Module):
         return x + self.dropout(sublayer(self.norm(x)))
 
 
-class EncoderBlock(nn.Module):
+class EncoderModel(nn.Module):
 
-    def __init__(self, multiHead: MultiHeadAttention, feedForwardNetwork: FeedForwardNetwork, dropout: float):
+    def __init__(self, Multiattention: MultiHeadAttention, feed_forward_network: FeedForwardNetwork, dropout: float):
         super().__init__()
-        self.self_attention = multiHead
-        self.feed_forward_network = feedForwardNetwork
-        self.Residual = nn.ModuleList([ResNet(dropout) for _ in range(2)])
+        self.multiHead_Attention = Multiattention
+        self.Feed_ForwardNetwork = feed_forward_network
+        self.ResNet = nn.ModuleList([ResNet(dropout) for _ in range(2)])
 
     def forward(self, x, mask):
-        x = self.Residual[0](x, lambda x: self.self_attention(x, x, x, mask))
-        x = self.Residual[1](x, self.feed_forward_network)
+        x = self.ResNet[0](x, lambda x: self.multiHead_Attention(x, x, x, mask))
+        x = self.ResNet[1](x, self.Feed_ForwardNetwork)
+
         return x
 
 
 class Encoder(nn.Module):
-    def __init__(self, layers: nn.MoudleList) -> None:
+    def __init__(self, layers: nn.ModuleList):
         super().__init__()
         self.layers = layers
         self.norm = LayerNorm()
 
     def forward(self, x, mask):
+
         for layer in self.layers:
             x = layer(x, mask)
 
         return self.norm(x)
 
 
-class DecoderBlock(nn.Module):
+class DecoderModel(nn.Module):
 
-    def __init__(self, multiHead: MultiHeadAttention, crossHeadAttention: MultiHeadAttention, feedForward: FeedForwardNetwork, dropout: float):
+    def __init__(self, multiattention: MultiHeadAttention, crossattention: MultiHeadAttention, ffn: FeedForwardNetwork, dropout: float):
         super().__init__()
-        self.self_attention = multiHead
-        self.crossHead = crossHeadAttention
-        self.feedForward = feedForward
-        self.layerNorm = LayerNorm()
-        self.resNet = nn.ModuleList([ResNet(dropout) for _ in range(3)])
+        self.crossAttention = crossattention
+        self.multi_head_attention = multiattention
+        self.forwardNetwork = ffn
+
+        self.Resnet = nn.ModuleList([ResNet(dropout) for _ in range(3)])
 
     def forward(self, x, mask):
-        x = self.resNet[0](x, lambda x: self.self_attention(x, x, x, mask))
-        x = self.resNet[1](x, lambda x: self.crossHead(x, x, x, mask))
-        x = self.resNet[2](x, self.feedForward)
+        x = self.Resnet[0](x, lambda x: self.crossAttention(x, x, x, mask))
+        x = self.Resnet[1](x, lambda x: self.multi_head_attention(x, x, x, mask))
+        x = self.Resnet[3](x, self.forwardNetwork)
 
         return x
-
-
-class Decoder(nn.Module):
-
-    def __init__(self, layers: nn.ModuleList) -> None:
-        super().__init__()
-        self.layers = layers
-        self.norm = LayerNorm()
-
-    def forward(self, x, mask):
-        for layer in self.layers:
-            x = layer(x, mask)
-
-        return self.norm(x)
