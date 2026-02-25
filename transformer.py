@@ -32,7 +32,7 @@ class InputEmbeddings(nn.Module):
 
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_model: int, dropout: float, seq_length: int):
+    def __init__(self, d_model: int, dropout: float, seq_length: int) -> None:
         super().__init__()
 
         self.d_model = d_model
@@ -42,10 +42,10 @@ class PositionalEncoding(nn.Module):
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)) # 10000 ^ (2 * i)/d_model
 
         self.pe = torch.zeros(seq_length, d_model) # create tensor of size seq_lenth * d_model
-        self.pos = torch.arange(0, seq_length, dtype=torch.float).unsqueeze(1) # create a tensor of 0 to seqlength of data filled 1
+        self.pos = torch.arange(0, seq_length, dtype=torch.float).unsqueeze(1) # create a tensor of seq_length * 1
 
-        self.pe[::2] = torch.sin(pos * div_term) # for even pos
-        self.pe[1::2] = torch.cos(pos * div_term) # for odd pos
+        self.pe[:, ::2] = torch.sin(pos * div_term) # for even pos
+        self.pe[:, 1::2] = torch.cos(pos * div_term) # for odd pos
 
 
         self.pe = self.pe.unsqueeze(0) # (1, seq_length, d_model)
@@ -53,5 +53,16 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        x = x + (self.pe[: ,:x.shape[1], :]).requires_grad_(False)
+        x = x + (self.pe[: ,:x.shape[1], :]).requires_grad_(False) # (batch, seq_length, d_model)
         return self.dropout(x)
+
+
+class AddAndNorm(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float):
+
+        super().__init__()
+        self.d_model = d_model
+        self.dropout = nn.Dropout(dropout)
+
+        self.Layers = 
