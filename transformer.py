@@ -102,11 +102,16 @@ class FFN(nn.Module):
         return self.net(x)
 
 
-class ResNet(nn.Module):
+class ResidualConnection(nn.Module):
 
-    def __init__(self):
-
+    def __init__(self, dropout: float) -> None:
         super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.layer_normalization = AddAndNorm() # Layer Normalization
 
 
-# remaining task 1. resnet 2. Attention 3. Multi Head attention
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.layer_normalization(x)))
+
+
+# remaining 1. Attention 2. Multi Head attention
