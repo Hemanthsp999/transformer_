@@ -56,13 +56,57 @@ class PositionalEncoding(nn.Module):
         x = x + (self.pe[: ,:x.shape[1], :]).requires_grad_(False) # (batch, seq_length, d_model)
         return self.dropout(x)
 
+class MultiHeadAttention(nn.Module):
+
+    def __init__(self, seq_length: int, d_model: int, batch_size: int, dropout: float):
+
+        super().__init__()
 
 class AddAndNorm(nn.Module):
 
-    def __init__(self, d_model: int, dropout: float):
+    def __init__(self, d_model: int, epsilon: float=1e-9):
 
         super().__init__()
         self.d_model = d_model
-        self.dropout = nn.Dropout(dropout)
+        self.epsilon = epsilon
 
-        self.Layers = 
+        self.beta = nn.Parameter(torch.zeros(d_model)) # set to 0
+        self.gama = nn.Parameter(torch.ones(d_model)) # set to 1 
+
+
+    def forward(self, x):
+        mean = x.mean(dim=1, keepdim=True)
+        std = x.std_mean(dim=1, keepdim=True)
+
+        layer_val = (x - mean)/torch.sqrt(std**2 + self.epsilon)
+        return self.gama * layer_val + self.beta
+
+
+class FFN(nn.Module):
+
+    def __init__(self, dropout: float, d_model: int):
+
+        super().__init__()
+        self.d_model = d_model
+
+        self.d_ff = 4 * self.d_model
+        self.net = nn.Sequential(
+                nn.Linear(self.d_model, self.d_ff), # First Layer 
+                nn.ReLU(), # First Layer output passed to relu
+                nn.Dropout(dropout), # dropout is applied on relu output
+                nn.Linear(self.d_ff, self.d_model) # Second Layer
+        ) 
+
+    def forward(self, x):
+
+        return self.net(x)
+
+
+class ResNet(nn.Module):
+
+    def __init__(self):
+
+        super().__init__()
+
+
+# remaining task 1. resnet 2. Attention 3. Multi Head attention
