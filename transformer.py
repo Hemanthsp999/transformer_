@@ -113,31 +113,31 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.layer_normalization(x)))
 
 
-class SingleHeadAttention(nn.Module):
-
-    def __init__(self, dropout: float, q, k, v):
-        super().__init__()
-
-    @staticmethod()
-    def singlehead(self, q, k, v): 
-
-
 class MultiHeadAttention(nn.Module):
 
-    def __init__(self, seq_length: int, batch_size: int, d_model: int, dropout: float, head: int):
+    def __init__(self, d_model: int, h: int, dropout: float)->None:
         super().__init__()
         self.d_model = d_model
-        self.seq_length = seq_length
-        self.batch_size = batch_size
         self.dropout = nn.Dropout(dropout)
 
-        self.d_h = self.d_model / head
-        self.d_k = self.d_h
+        assert self.d_model == 0, "d_model is not divisible by h"
 
-        self.wq = nn.Linear(torch.randn(self.d_model, self.d_h))
-        self.wk = nn.Linear(torch.randn(self.d_model, self.d_k))
-        self.wv = nn.Linear(torch.randn(self.d_model, self.d_k))
+        self.d_h = self.d_model // h
+
+        self.w_q = nn.Linear(self.d_model, self.d_model)
+        self.w_k = nn.Linear(self.d_model, self.d_model)
+        self.w_v = nn.Linear(self.d_model, self.d_model)
+
+        self.w_o = nn.Linear(self.d_model, self.d_model)
+
+    @staticmethod()
+    def attention(query, key, value, mask, dropout: nn.Dropout):
+        d_k = query.shape[-1]
 
 
-# remaining 1. Attention 2. Multi Head attention
-    def forward(self, q, k, v, masked):
+    def forward(self, query, key, value, masked_val):
+
+        Q = self.w_q(query)
+        K = self.w_k(key)
+        V = self.w_v(value)
+
