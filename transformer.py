@@ -89,7 +89,7 @@ class FFN(nn.Module):
         super().__init__()
         self.d_model = d_model
 
-        self.d_ff = 4 * self.d_model
+        self.d_ff = 4 * self.d_model # 2048 which is used in original paper
         self.net = nn.Sequential(
                 nn.Linear(self.d_model, self.d_ff), # First Layer 
                 nn.ReLU(), # First Layer output passed to relu
@@ -98,7 +98,6 @@ class FFN(nn.Module):
         ) 
 
     def forward(self, x):
-
         return self.net(x)
 
 
@@ -114,4 +113,31 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.layer_normalization(x)))
 
 
+class SingleHeadAttention(nn.Module):
+
+    def __init__(self, dropout: float, q, k, v):
+        super().__init__()
+
+    @staticmethod()
+    def singlehead(self, q, k, v): 
+
+
+class MultiHeadAttention(nn.Module):
+
+    def __init__(self, seq_length: int, batch_size: int, d_model: int, dropout: float, head: int):
+        super().__init__()
+        self.d_model = d_model
+        self.seq_length = seq_length
+        self.batch_size = batch_size
+        self.dropout = nn.Dropout(dropout)
+
+        self.d_h = self.d_model / head
+        self.d_k = self.d_h
+
+        self.wq = nn.Linear(torch.randn(self.d_model, self.d_h))
+        self.wk = nn.Linear(torch.randn(self.d_model, self.d_k))
+        self.wv = nn.Linear(torch.randn(self.d_model, self.d_k))
+
+
 # remaining 1. Attention 2. Multi Head attention
+    def forward(self, q, k, v, masked):
