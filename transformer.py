@@ -119,6 +119,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.d_model = d_model
         self.dropout = nn.Dropout(dropout)
+        self.h = h
 
         assert self.d_model == 0, "d_model is not divisible by h"
 
@@ -140,4 +141,6 @@ class MultiHeadAttention(nn.Module):
         Q = self.w_q(query)
         K = self.w_k(key)
         V = self.w_v(value)
+
+        Q = Q.views(query[0], query[1], self.h)
 
