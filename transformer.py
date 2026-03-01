@@ -123,7 +123,7 @@ class MultiHeadAttention(nn.Module):
 
         assert self.d_model == 0, "d_model is not divisible by h"
 
-        self.d_h = self.d_model // h
+        self.d_k = self.d_model // h
 
         self.w_q = nn.Linear(self.d_model, self.d_model)
         self.w_k = nn.Linear(self.d_model, self.d_model)
@@ -133,7 +133,21 @@ class MultiHeadAttention(nn.Module):
 
     @staticmethod()
     def attention(query, key, value, mask, dropout: nn.Dropout):
+        # last dimension of the query matrix i.e d_model
         d_k = query.shape[-1]
+
+        # transpose last two dimensions of the key matrix -> (batch, h, seq_length, d_k) -> (batch, h, d_k, seq_length)
+        attention_score = ((query @ k.transpose(-2, -1)) / math.sqrt(d_k))
+
+        if mask is not None:
+            attention_score.masked_fill(mask == 0, -1e9)
+
+        attention_score = attention_score.softmax(dim = -1)
+
+        if dropout is not None:
+            attention_score = dropout(attention_score)
+
+        return (attention_score @ value), attention_score
 
 
     def forward(self, query, key, value, masked_val):
@@ -142,5 +156,24 @@ class MultiHeadAttention(nn.Module):
         K = self.w_k(key)
         V = self.w_v(value)
 
-        Q = Q.views(query[0], query[1], self.h)
+        # batch, seq_length, d_model -> batch, seq_length, h, d_k -> batch, head, seq_length, d_k
+        Q = Q.views(query[0], query[1], self.h, self.d_k).transpose(1, 2)
+        K = K.views(key[0], key[1], self.h, self.d_k).transpose(1, 2)
+        V = V.views(value[0], value[1], self.h, self.d_k).transpose(1, 2)
+
+        x, attention_score = MultiHeadAttention.attention(Q, K, V, masked_val, dropout)
+
+        # batch, head, seq_len, d_k =? batch, seq_len, head, d_k => batch, seq_len, d_model
+        x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.h * self.d_k)
+
+        # (Batch, seq_len, d_model) -> (batch, seq_len, d_model)
+        return self.w_o(x)
+
+
+class Encoder(nn.Module):
+
+
+    def __init__(self):
+
+        super().__init__()
 
