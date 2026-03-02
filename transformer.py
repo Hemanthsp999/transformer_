@@ -172,8 +172,35 @@ class MultiHeadAttention(nn.Module):
 
 class Encoder(nn.Module):
 
+    def __init__(self):
+        super().__init__()
+
+        self.LayerNormalization = AddAndNorm() 
+        self.FeedForwardNetwork = FFN()
+        self.resnet = ResidualConnection()
+        self.MultiHead = MultiHeadAttention()
+
+
+    def forward(self, n: int=6):
+
+        while n != 0:
+
+           self.resnet()
+           self.MultiHead()
+           self.LayerNormalization()
+           self.resnet()
+           self.FeedForwardNetwork() 
+           self.LayerNormalization()
+
+
+class Decoder(nn.Module):
 
     def __init__(self):
 
         super().__init__()
 
+
+    def forward(self, n: int=6):
+
+
+# Need to work Encoder & Decoder block
