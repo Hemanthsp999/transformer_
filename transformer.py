@@ -170,27 +170,16 @@ class MultiHeadAttention(nn.Module):
         return self.w_o(x)
 
 
-class Encoder(nn.Module):
+class EncoderBlock(nn.Module):
 
-    def __init__(self):
+    def __init__(self, self_attention: MultiHeadAttention, FeedForwardNetwork: FeedForwardNetwork, dropout: float):
+
         super().__init__()
 
-        self.LayerNormalization = AddAndNorm() 
-        self.FeedForwardNetwork = FFN()
-        self.resnet = ResidualConnection()
-        self.MultiHead = MultiHeadAttention()
+        self.mulit_attention = self_attention
+        self.feed_forward_network = FeedForwardNetwork
+        self.residual_connection = nn.ModuleList([ResidualConnection(dropout) for _ in range(2)])
 
-
-    def forward(self, n: int=6):
-
-        while n != 0:
-
-           self.resnet()
-           self.MultiHead()
-           self.LayerNormalization()
-           self.resnet()
-           self.FeedForwardNetwork() 
-           self.LayerNormalization()
 
 
 class Decoder(nn.Module):
