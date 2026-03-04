@@ -177,19 +177,82 @@ class EncoderBlock(nn.Module):
         super().__init__()
 
         self.mulit_attention = self_attention
-        self.feed_forward_network = FeedForwardNetwork
+        self.feed_forward_block = FeedForwardNetwork
         self.residual_connection = nn.ModuleList([ResidualConnection(dropout) for _ in range(2)])
 
+    def forward(self, x, mask):
+
+        x = self.residual_connection[0](x, lambda x: self.self_attention(x, x, x, mask))
+        x = self.residual_connection[1](x, lambda x: self.feed_forward_block)
+
+        return x
+
+
+class Encoder(nn.Module):
+
+    def __init__(self, layer: nn.ModuleList) -> None:
+
+        self.layers = layer
+        self.layer_norm = AddAndNorm()
+
+    def forward(self, x, mask):
+
+        for layer in self.layers:
+            x = layer(x, mask)
+
+        return self.layer_norm(x)
+
+
+class DecoderBlock(nn.Module):
+
+    def __init__(self, self_attention: MultiHeadAttention, fnn: FeedForwardNetwork, cross_attention: MultiHeadAttention, dropout: float):
+
+        super().__init__()
+        self.multi_attention = self_attention
+        self.fnn = fnn
+        self.cross_attention = cross_attention
+        self.residual_connection = nn.ModuleList([ResidualConnection(dropout) for _ in range(3)])
+
+
+    def forward(self, x, src_mask, encoder_output, target_mask):
+        
+        x = self.residual_connection[0](x, lambda x: self.multi_attention(x, x, x, target_mask))
+        x = self.residual_connection[1](x, lambda x: self.cross_attention(x, encoder_output, encoder_output, src_mask))
+        x = self.residual_connection[2](x, self.fnn)
+
+        return x
 
 
 class Decoder(nn.Module):
 
-    def __init__(self):
+    def __init__(self, layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.layer_norm = AddAndNorm()
+
+    def forward(self, x, encoder_output, src_mask, target_mask):
+
+        for layer in self.layers:
+            x = layer(x, encoder_output, src_mask, target_mask)
+
+        return self.layer_norm(x)
+
+
+class ProjectLayer(nn.Module):
+
+    def __init__(self, seq_length: int, d_model: int):
 
         super().__init__()
+        self.seq_length = seq_length
+        self.d_model = self.d_model
+
+        # Final Neural Layer of dim -> seq_lenth, d_model
+        self.linear = nn.Linear(self.seq_length, self.d_model)
 
 
-    def forward(self, n: int=6):
+    def forward(self, input):
 
+        neural_layer = self.linear(input)
 
-# Need to work Encoder & Decoder block
+        # final step apply softmax 
+        neural_layer.softmax(dim=-1)
