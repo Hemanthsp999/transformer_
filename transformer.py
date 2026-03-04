@@ -240,19 +240,18 @@ class Decoder(nn.Module):
 
 class ProjectLayer(nn.Module):
 
-    def __init__(self, seq_length: int, d_model: int):
+    def __init__(self, seq_length: int, d_model: int, vocab_size: int):
 
         super().__init__()
         self.seq_length = seq_length
-        self.d_model = self.d_model
+        self.d_model = d_model
+        self.vocab_size = vocab_size
 
-        # Final Neural Layer of dim -> seq_lenth, d_model
-        self.linear = nn.Linear(self.seq_length, self.d_model)
+        # Final Neural Layer
+        self.linear = nn.Linear(self.d_model, self.vocab_size) # (batch_size, seq_length, d_model) @ (d_model, vocab_size) i.e (512 * 512)
+        # (b, m, n) * (n, v) -> (m, v)
+        
 
 
     def forward(self, input):
-
         neural_layer = self.linear(input)
-
-        # final step apply softmax 
-        neural_layer.softmax(dim=-1)
