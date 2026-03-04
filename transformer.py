@@ -56,11 +56,6 @@ class PositionalEncoding(nn.Module):
         x = x + (self.pe[: ,:x.shape[1], :]).requires_grad_(False) # (batch, seq_length, d_model)
         return self.dropout(x)
 
-class MultiHeadAttention(nn.Module):
-
-    def __init__(self, seq_length: int, d_model: int, batch_size: int, dropout: float):
-
-        super().__init__()
 
 class AddAndNorm(nn.Module):
 
@@ -254,4 +249,5 @@ class ProjectLayer(nn.Module):
 
 
     def forward(self, input):
-        neural_layer = self.linear(input)
+        return torch.log_softmax(self.linear(input), dim=-1)
+
