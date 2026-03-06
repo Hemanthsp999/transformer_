@@ -30,7 +30,7 @@ class InputEmbeddings(nn.Module):
         return self.embeddings(indices) * math.sqrt(self.d_model) # matrix * d_model
 
 
-class PositionalEncoding(nn.Module):
+class PositionalEncoder(nn.Module):
 
     def __init__(self, d_model: int, dropout: float, seq_length: int) -> None:
         super().__init__()
@@ -70,8 +70,8 @@ class AddAndNorm(nn.Module):
 
 
     def forward(self, x):
-        mean = x.mean(dim=1, keepdim=True)
-        std = x.std_mean(dim=1, keepdim=True)
+        mean = x.mean(dim=-1, keepdim=True)
+        std = x.std(dim=-1, keepdim=True)
 
         layer_val = (x - mean)/torch.sqrt(std**2 + self.epsilon)
         return self.gama * layer_val + self.beta
@@ -116,7 +116,7 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.h = h
 
-        assert self.d_model == 0, "d_model is not divisible by h"
+        assert self.d_model % h == 0, "d_model is not divisible by h"
 
         self.d_k = self.d_model // h
 
@@ -132,7 +132,7 @@ class MultiHeadAttention(nn.Module):
         d_k = query.shape[-1]
 
         # transpose last two dimensions of the key matrix -> (batch, h, seq_length, d_k) -> (batch, h, d_k, seq_length)
-        attention_score = ((query @ k.transpose(-2, -1)) / math.sqrt(d_k))
+        attention_score = ((query @ key.transpose(-2, -1)) / math.sqrt(d_k))
 
         if mask is not None:
             attention_score.masked_fill(mask == 0, -1e9)
@@ -152,9 +152,9 @@ class MultiHeadAttention(nn.Module):
         V = self.w_v(value)
 
         # batch, seq_length, d_model -> batch, seq_length, h, d_k -> batch, head, seq_length, d_k
-        Q = Q.views(query[0], query[1], self.h, self.d_k).transpose(1, 2)
-        K = K.views(key[0], key[1], self.h, self.d_k).transpose(1, 2)
-        V = V.views(value[0], value[1], self.h, self.d_k).transpose(1, 2)
+        Q = Q.view(query[0], query[1], self.h, self.d_k).transpose(1, 2)
+        K = K.view(key[0], key[1], self.h, self.d_k).transpose(1, 2)
+        V = V.view(value[0], value[1], self.h, self.d_k).transpose(1, 2)
 
         x, attention_score = MultiHeadAttention.attention(Q, K, V, masked_val, dropout)
 
@@ -233,7 +233,7 @@ class Decoder(nn.Module):
         return self.layer_norm(x)
 
 
-class ProjectLayer(nn.Module):
+class ProjectionLayer(nn.Module):
 
     def __init__(self, seq_length: int, d_model: int, vocab_size: int):
 
@@ -251,3 +251,43 @@ class ProjectLayer(nn.Module):
     def forward(self, input):
         return torch.log_softmax(self.linear(input), dim=-1)
 
+
+
+class Transformer(nn.Module):
+
+    def __init__(self, encoder: Encoder, decoder: Decoder, src_embedding: InputEmbeddings, positionalEncoder: PositionalEncoder trgt_embedding: InputEmbeddings, projectionLayer: ProjectionLayer):
+
+        super().__init__()
+
+        self.encoder = encoder
+        self.decoder = decoder
+        self.src_embeddings = src_embedding
+        self.targt_embeddings = targt_embddings
+        self.pos_encoder = positionalEncoder
+        self.projectionlayer = projectionLayer
+
+
+
+    def encoder(self, src, src_mask):
+
+        embeddings = self.src_embeddings(src)
+        positional_encoding = self.pos_encoder(embeddings)
+
+        return self.encoder(positional_encoding, src_mask)
+
+
+    def decoder(self, encoder_output, src_mask, targt, targt_mask):
+
+        targt = self.targt_embeddings(targt)
+        targt = self.pos_encoder(targt)
+
+        return self.decoder(target, encoder_output, src_mask, targt_mask)
+
+
+    def Projection(self, x):
+
+        return self.projectionlayer(x)
+
+
+
+def build_transformer(vocab_size: int, d_model: int=512, N: int=6, h: int=8, dropout: float=0.1):
