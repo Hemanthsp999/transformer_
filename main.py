@@ -1,29 +1,70 @@
+"""
+main.py — Entry point
+
+Demonstrates the TrainTokenizer API exactly as written in the original main.py,
+then kicks off the full Transformer training pipeline.
+
+Usage:
+    pip install torch tokenizers datasets tqdm
+    python main.py
+"""
+
+from train import TrainTokenizer, train_model
+from config import get_config
 import os
-import torch
-import torch.nn as nn
-from pathlib import Path
 
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
-from tokenizers.trainer import BpeTrainer
-from tokenizers.pre_tokenizer import Whitespace()
 
-# Use BytePairEncoding tokenizer
+# ---------------------------------------------------------------------------
+# 1. Tokenizer demo  (matches the snippet in the original main.py exactly)
+# ---------------------------------------------------------------------------
 
-def train_tokenizer(config, ds, lang):
-    print("building tokenizer")
+def tokenizer_demo():
+    print("=" * 60)
+    print("TOKENIZER DEMO")
+    print("=" * 60)
 
-    tokenizer_path = Path(config['tokenizer_file'].format(lang))
+    # Create a tiny demo corpus if data.txt doesn't exist
+    if not os.path.exists("data.txt"):
+        with open("data.txt", "w") as f:
+            f.write(
+                "Hello world this is a transformer model built from scratch.\n"
+                "Attention is all you need paper implementation.\n"
+                "Natural language processing with deep learning.\n"
+            )
+        print("Created demo data.txt")
 
-    if not Path.exists(tokenizer_path):
-        tokenizer = Tokenizer(BPE())
-        tokenizer.pre_tokenizer = Whitespace()
-        trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
-        tokenizer.train(files=["wiki.train.raw", "wiki.valid.raw", "wiki.test.raw"], trainer=trainer)
-        tokenizer.save(str(tokenizer_path))
-    else:
-        tokenizer = Tokenizer.from_file(str(tokenizer_path))
+    trainer = TrainTokenizer()
+    files   = trainer.data_loader("data.txt")
+    trainer.train_(files)
+    trainer.save("tokenizer.json")
 
-    return tokenizer
+    encoded = trainer.encode("Hello world")
+    print("Tokens :", encoded.tokens)
 
-        
+    decoded = trainer.decode(encoded.ids)
+    print("Decoded:", decoded)
+    print()
+
+
+# ---------------------------------------------------------------------------
+# 2. Full Transformer training
+# ---------------------------------------------------------------------------
+
+def main():
+    tokenizer_demo()
+
+    print("=" * 60)
+    print("TRANSFORMER TRAINING")
+    print("=" * 60)
+
+    config = get_config()
+
+    # Optionally tweak for a quick smoke-test:
+    # config["num_epochs"] = 1
+    # config["batch_size"] = 2
+
+    train_model(config)
+
+
+if __name__ == "__main__":
+    main()
